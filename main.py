@@ -1,4 +1,3 @@
-
 from slack import Slack
 from datetime import datetime
 import settings
@@ -7,14 +6,13 @@ import json
 import logging
 import logging.handlers
 
-
 slack = Slack(settings.SLACK_TOKEN, settings.BOT_NAME)
 slack.connect()
 logger = logging.getLogger('slack-logger')
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(message)s')
 file_handler = logging.handlers.TimedRotatingFileHandler(
-    './slack-log', when='midnight', interval=1, encoding="UTF-8")
+    './logs/slack-log', when='midnight', interval=1, encoding="UTF-8")
 file_handler.suffix = "%Y-%m-%d"
 stream_handler = logging.StreamHandler()
 logger.addHandler(file_handler)
