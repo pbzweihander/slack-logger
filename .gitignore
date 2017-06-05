@@ -126,4 +126,4 @@ ENV/
 
 
 settings.py
-slack-log*
+logs/
