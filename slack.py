@@ -28,7 +28,7 @@ class Slack:
 
     def __init__(self, token: str, name: str):
         self.client = Slacker(token)
-        res = slack.rtm.start()
+        res = self.client.rtm.start()
         endpoint = res.body['url']
         self.socket = websocket.create_connection(endpoint)
         self.name = name
@@ -41,7 +41,7 @@ class Slack:
         self.refresh_channels()
 
     def refresh_users(self):
-        for u in self.client.user.list()['members']:
+        for u in self.client.users.list()['members']:
             self.users[u.get('id')] = u.get('name')
 
     def refresh_channels(self):
@@ -56,4 +56,3 @@ class Slack:
 
     def read(self) -> list:
         return self.socket.recv()
-
