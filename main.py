@@ -33,20 +33,20 @@ def es_search(index: str, doc_type: str, body: dict) -> list:
     return []
 
 
-def handle_message(channel: str, user: str, text: str, ts: float):
-    channame = slack.channels.get(channel)
+def handle_message(d: dict):
+    channame = slack.channels.get(d['channel'])
     if not channame:
         slack.refresh_channels()
-        channame = slack.channels.get(channel) or "?"
-    username = slack.users.get(user)
+        channame = slack.channels.get(d['channel']) or "?"
+    username = slack.users.get(d['user'])
     if not username:
         slack.refresh_users()
-        username = slack.users.get(user) or "?"
-    date_ts = datetime.fromtimestamp(ts)
-    log_to_json(channame, username, text, date_ts)
-    res = handle_command(text)
+        username = slack.users.get(d['user']) or "?"
+    date_ts = datetime.fromtimestamp(d['ts'])
+    log_to_json(channame, username, d['text'], date_ts)
+    res = handle_command(d['text'])
     if res:
-        slack.post_formatted_message(channel, res)
+        slack.post_formatted_message(d['channel'], res)
     return ""
 
 
@@ -89,14 +89,12 @@ def log_to_json(channel: str, user: str, text: str, date_ts: datetime):
 def main():
     print("Logger Started!")
     while True:
-        texts = slack.read()
-        if not texts:
+        raw_text = slack.read()
+        if not raw_text:
             continue
-        _ = [handle_message(text.get('channel'), text.get('user'), text.get('text'), float(text.get('ts')))
-             for text in texts
-             if text.get('type') == 'message'
-             if 'subtype' not in text
-             if text.get('text')]
+        text = json.loads(raw_text)
+        if text.get('type') == 'message' and 'subtype' not in text and text.get('text'):
+            handle_command(json.loads(raw_text))
         time.sleep(0.01)
 
 
