@@ -25,12 +25,11 @@ def es_create(index: str, doc_type: str, body: dict) -> bool:
 
 
 def es_search(index: str, doc_type: str, body: dict) -> list:
-    query = {'query': {'term': {}}}
-    query['query']['term'].update(body)
+    query = json.dumps({'query': {'term': body}})
     res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
     jsoned = json.loads(res.text)
     if jsoned.get('hits') and jsoned['hits'].get('hits'):
-        return [doc['_source']['content'] for doc in jsoned['hits']['hits']]
+        return [doc['_source'] for doc in jsoned['hits']['hits']]
     return []
 
 
