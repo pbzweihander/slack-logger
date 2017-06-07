@@ -52,7 +52,7 @@ class Slack:
         self.client.chat.post_message(channel=chan, text=msg, as_user=as_user, username=name)
 
     def post_formatted_message(self, chan: str, body: dict, as_user=True, name=""):
-        self.client.chat.post_message(channel=chan, text=None, attachment=body, as_user=as_user, username=name)
+        self.client.chat.post_message(channel=chan, text=None, attachments=body, as_user=as_user, username=name)
 
     def read(self) -> list:
         return self.socket.recv()
