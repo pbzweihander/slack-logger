@@ -14,19 +14,23 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from slackclient import SlackClient
+from slacker import Slacker
+import websocket
 
 
 class Slack:
     client = None
+    socket = None
     name = ""
     id = ""
-    connected = False
     users = dict()
     channels = dict()
 
     def __init__(self, token: str, name: str):
-        self.client = SlackClient(token)
+        self.client = Slacker(token)
+        res = slack.rtm.start()
+        endpoint = res.body['url']
+        self.socket = websocket.create_connection(endpoint)
         self.name = name
 
         self.refresh_users()
@@ -37,21 +41,19 @@ class Slack:
         self.refresh_channels()
 
     def refresh_users(self):
-        for u in self.client.api_call("users.list").get('members'):
+        for u in self.client.user.list()['members']:
             self.users[u.get('id')] = u.get('name')
 
     def refresh_channels(self):
-        for u in self.client.api_call("channels.list").get('channels'):
+        for u in self.client.channels.list()['channels']:
             self.channels[u.get('id')] = u.get('name')
 
-    def connect(self) -> bool:
-        self.connected = self.client.rtm_connect()
-        return self.connected
-
     def post_message(self, chan: str, msg: str, as_user=True, name=""):
-        if self.connected:
-            self.client.api_call('chat.postMessage', channel=chan, text=msg, as_user=as_user, username=name)
+        self.client.chat.post_message(channel=chan, text=msg, as_user=as_user, username=name)
+
+    def post_formatted_message(self, chan: str, body: dict, as_user=True, name=""):
+        self.client.chat.post_message(channel=chan, text=None, attachment=body, as_user=as_user, username=name)
 
     def read(self) -> list:
-        if self.connected:
-            return self.client.rtm_read()
+        return self.socket.recv()
+
