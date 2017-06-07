@@ -24,14 +24,10 @@ def es_create(index: str, doc_type: str, body: dict) -> bool:
     return json.loads(res.text).get('created') or False
 
 
-def es_search(index: str, doc_type: str, body: dict) -> list:
+def es_search(index: str, doc_type: str, body: dict, size=10) -> list:
     query = json.dumps({
-        'sort': [
-            {'time': {'order': 'asc'}},
-            'channel',
-            'user',
-            'text'
-        ],
+        'size': size,
+        'sort': [{'time': {'order': 'desc'}}],
         'query': {'term': body}})
     res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
     jsoned = json.loads(res.text)
@@ -62,18 +58,14 @@ def handle_command(text: str) -> list:
         if text.split()[0] == "!logsearch":
             args = text.split()[1:]
             if len(args) < 2 or len(args) > 3:
-                return [{'text': "Usage:\n!search <key> <value> [<max>]\nkey: channel, user, text, time"}]
-            res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]})
+                return [{'text': "Usage:\n!search <key> <value> [<size>]\nkey: channel, user, text, time"}]
+            if len(args) == 3:
+                res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]}, int(args[2]))
+            else:
+                res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]})
             if res:
-                c = len(res)
-                if len(args) == 3:
-                    if c > len(args[2]):
-                        res = res[-int(args[3]):]
-                else:
-                    if c > 5:
-                        res = res[-5:]
                 outdict = dict()
-                outdict['pretext'] = "%s개가 검색됨" % c
+                outdict['pretext'] = "%s개가 검색됨" % len(res)
                 outdict['text'] = '\n'.join(["%s %s@%s: %s" %
                                              (doc['time'], doc['user'], doc['channel'], doc['text'])
                                              for doc in res])
@@ -81,7 +73,7 @@ def handle_command(text: str) -> list:
             else:
                 return [{'text': "검색 결과가 없습니다."}]
         elif text.split()[0] == "!loghelp":
-            return [{'text': "Usage:\n!search <key> <value>\nkey: channel, user, text, time"}]
+            return [{'text': "Usage:\n!search <key> <value> [<size>]\nkey: channel, user, text, time"}]
     return []
 
 
