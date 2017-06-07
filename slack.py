@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 
 from slacker import Slacker
-import websockets
+import websocket
 
 
 class Slack:
@@ -30,7 +30,7 @@ class Slack:
         self.client = Slacker(token)
         res = self.client.rtm.start()
         endpoint = res.body['url']
-        self.socket = websockets.connect(endpoint)
+        self.socket = websocket.create_connection(endpoint)
         self.name = name
 
         self.refresh_users()
