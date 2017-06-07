@@ -1,6 +1,6 @@
 from slack import Slack
 from datetime import datetime
-from elasticsearch import Elasticsearch
+import requests
 import settings
 import time
 import json
@@ -16,20 +16,21 @@ file_handler.suffix = "%Y-%m-%d"
 stream_handler = logging.StreamHandler()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
-es_client = Elasticsearch()
 
 
 def es_create(index: str, doc_type: str, body: dict) -> bool:
-    res = es_client.create(index=index, doc_type=doc_type, body=body)
-    return res.get('created') or False
+    query = json.dumps(body)
+    res = requests.post('http://localhost:9200/%s/%s/' % (index, doc_type), data=query)
+    return json.loads(res.text).get('created') or False
 
 
 def es_search(index: str, doc_type: str, body: dict) -> list:
     query = {'query': {'term': {}}}
     query['query']['term'].update(body)
-    res = es_client.search(index=index, doc_type=doc_type, body=query)
-    if res.get('hits') and res['hits'].get('hits'):
-        return [doc['_source']['content'] for doc in res['hits']['hits']]
+    res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
+    jsoned = json.loads(res.text)
+    if jsoned.get('hits') and jsoned['hits'].get('hits'):
+        return [doc['_source']['content'] for doc in jsoned['hits']['hits']]
     return []
 
 
