@@ -25,7 +25,14 @@ def es_create(index: str, doc_type: str, body: dict) -> bool:
 
 
 def es_search(index: str, doc_type: str, body: dict) -> list:
-    query = json.dumps({'query': {'term': body}})
+    query = json.dumps({
+        'sort': [
+            {'time': {'order': 'asc'}},
+            'channel',
+            'user',
+            'text'
+        ],
+        'query': {'term': body}})
     res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
     jsoned = json.loads(res.text)
     if jsoned.get('hits') and jsoned['hits'].get('hits'):
@@ -61,10 +68,10 @@ def handle_command(text: str) -> list:
                 c = len(res)
                 if len(args) == 3:
                     if c > len(args[2]):
-                        res = res[:args[3]]
+                        res = res[-int(args[3]):]
                 else:
                     if c > 5:
-                        res = res[:5]
+                        res = res[-5:]
                 outdict = dict()
                 outdict['pretext'] = "%s개가 검색됨" % c
                 outdict['text'] = '\n'.join(["%s %s@%s: %s" %
@@ -83,7 +90,7 @@ def log_to_json(channel: str, user: str, text: str, date_ts: datetime):
     outdict['channel'] = channel
     outdict['user'] = user
     outdict['text'] = text
-    outdict['time'] = date_ts.strftime('%Y-%m-%d %H:%M:%S')
+    outdict['time'] = date_ts.strftime('%Y/%m/%d %H:%M:%S')
     logger.info(json.dumps(outdict, ensure_ascii=False))
     es_create(settings.ES_INDEX, settings.ES_TYPE, outdict)
 
