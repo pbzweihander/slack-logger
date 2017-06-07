@@ -20,14 +20,14 @@ es_client = Elasticsearch()
 
 
 def es_create(index: str, doc_type: str, body: dict) -> bool:
-    res = es_client.create(index, doc_type, body)
+    res = es_client.create(index=index, doc_type=doc_type, body=body)
     return res.get('created') or False
 
 
 def es_search(index: str, doc_type: str, body: dict) -> list:
     query = {'query': {'term': {}}}
     query['query']['term'].update(body)
-    res = es_client.search(index, doc_type, query)
+    res = es_client.search(index=index, doc_type=doc_type, body=query)
     if res.get('hits') and res['hits'].get('hits'):
         return [doc['_source']['content'] for doc in res['hits']['hits']]
     return []
