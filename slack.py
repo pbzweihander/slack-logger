@@ -41,11 +41,11 @@ class Slack:
         self.refresh_channels()
 
     def refresh_users(self):
-        for u in self.client.users.list()['members']:
+        for u in self.client.users.list().body['members']:
             self.users[u.get('id')] = u.get('name')
 
     def refresh_channels(self):
-        for u in self.client.channels.list()['channels']:
+        for u in self.client.channels.list().body['channels']:
             self.channels[u.get('id')] = u.get('name')
 
     def post_message(self, chan: str, msg: str, as_user=True, name=""):
