@@ -13,9 +13,9 @@ Slack에서 로깅을 원하는 채널에 봇을 초대하면 로깅이 시작�
 
 ### Requirements
 
+- requests
 - slacker
 - websocket-client
-- elasticsearch
 
 --------
 
