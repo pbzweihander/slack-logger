@@ -94,7 +94,7 @@ def main():
             continue
         text = json.loads(raw_text)
         if text.get('type') == 'message' and 'subtype' not in text and text.get('text'):
-            handle_command(json.loads(raw_text))
+            handle_message(json.loads(raw_text))
         time.sleep(0.01)
 
 
