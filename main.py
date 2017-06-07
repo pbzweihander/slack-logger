@@ -72,6 +72,8 @@ def handle_command(text: str) -> list:
                                              (doc['time'], doc['user'], doc['channel'], doc['text'])
                                              for doc in res])
                 return [outdict]
+            else:
+                return [{'text': "검색 결과가 없습니다."}]
         elif text.split()[0] == "!loghelp":
             return [{'text': "Usage:\n!search <key> <value>\nkey: channel, user, text, time"}]
     return []
