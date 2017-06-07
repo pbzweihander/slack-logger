@@ -51,12 +51,12 @@ def handle_message(d: dict):
     return ""
 
 
-def handle_command(text: str) -> dict:
+def handle_command(text: str) -> list:
     if text.startswith("!"):
         if text.split()[0] == "!logsearch":
             args = text.split()[1:]
             if len(args) < 2 or len(args) > 3:
-                return {'text': "Usage:\n!search <key> <value> [<max>]\nkey: channel, user, text, time"}
+                return [{'text': "Usage:\n!search <key> <value> [<max>]\nkey: channel, user, text, time"}]
             res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]})
             if res:
                 c = len(res)
@@ -71,10 +71,10 @@ def handle_command(text: str) -> dict:
                 outdict['text'] = '\n'.join(["%s %s@%s: %s" %
                                              (doc['time'], doc['user'], doc['channel'], doc['text'])
                                              for doc in res])
-                return outdict
+                return [outdict]
         elif text.split()[0] == "!loghelp":
-            return {'text': "Usage:\n!search <key> <value>\nkey: channel, user, text, time"}
-    return dict()
+            return [{'text': "Usage:\n!search <key> <value>\nkey: channel, user, text, time"}]
+    return []
 
 
 def log_to_json(channel: str, user: str, text: str, date_ts: datetime):
