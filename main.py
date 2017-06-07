@@ -42,7 +42,7 @@ def handle_message(d: dict):
     if not username:
         slack.refresh_users()
         username = slack.users.get(d['user']) or "?"
-    date_ts = datetime.fromtimestamp(d['ts'])
+    date_ts = datetime.fromtimestamp(float(d['ts']))
     log_to_json(channame, username, d['text'], date_ts)
     res = handle_command(d['text'])
     if res:
