@@ -17,6 +17,8 @@ stream_handler = logging.StreamHandler()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
+last_search = ()
+
 
 def es_create(index: str, doc_type: str, body: dict) -> bool:
     query = json.dumps(body)
@@ -24,15 +26,18 @@ def es_create(index: str, doc_type: str, body: dict) -> bool:
     return json.loads(res.text).get('created') or False
 
 
-def es_search(index: str, doc_type: str, body: dict, size=10) -> list:
-    query = json.dumps({
+def es_search(index: str, doc_type: str, body: dict, size=10, fr=None) -> list:
+    query = {
         'size': size,
         'sort': [{'time': {'order': 'desc'}}],
-        'query': {'term': body}})
+        'query': {'term': body}}
+    if fr:
+        query['search_after'] = [fr]
+    query = json.dumps(query)
     res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
     jsoned = json.loads(res.text)
     if jsoned.get('hits') and jsoned['hits'].get('hits'):
-        return [doc['_source'] for doc in jsoned['hits']['hits']]
+        return [(float(doc['sort'][0]), doc['_source']) for doc in jsoned['hits']['hits']]
     return []
 
 
@@ -53,27 +58,54 @@ def handle_message(d: dict):
     return ""
 
 
+def log_search(key: str, value: str, size=10, fr=None) -> list:
+    global last_search
+    res = es_search(settings.ES_INDEX, settings.ES_TYPE, {key: value}, size, fr)
+    if res:
+        outdict = dict()
+        outdict['pretext'] = "%s개가 검색됨" % len(res)
+        outdict['title'] = "%s: %s" % (key, value)
+        outdict['text'] = '\n'.join(["%s %s@%s: %s" %
+                                     (doc[1]['time'], doc[1]['user'], doc[1]['channel'], doc[1]['text'])
+                                     for doc in res])
+        last_search = (key, value, res[-1][0])
+        return [outdict]
+    else:
+        return [{'text': "검색 결과가 없습니다."}]
+
+
+def log_more(size=10) -> list:
+    if not last_search:
+        return [{'text': "마지막 검색 결과가 없습니다."}]
+    return log_search(last_search[0], last_search[1], size, last_search[2])
+
+
+def log_help() -> list:
+    return [{'text': "Usage:\n"
+                     "!logsearch <key> <value> [<size>]\n"
+                     "!logmore [<size>]\n"
+                     "!loghelp\n"
+                     "(key: channel, user, text, time)"}]
+
+
 def handle_command(text: str) -> list:
     if text.startswith("!"):
         if text.split()[0] == "!logsearch":
             args = text.split()[1:]
             if len(args) < 2 or len(args) > 3:
-                return [{'text': "Usage:\n!search <key> <value> [<size>]\nkey: channel, user, text, time"}]
+                return log_help()
             if len(args) == 3:
-                res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]}, int(args[2]))
+                return log_search(args[0], args[1], int(args[2]))
             else:
-                res = es_search(settings.ES_INDEX, settings.ES_TYPE, {args[0]: args[1]})
-            if res:
-                outdict = dict()
-                outdict['pretext'] = "%s개가 검색됨" % len(res)
-                outdict['text'] = '\n'.join(["%s %s@%s: %s" %
-                                             (doc['time'], doc['user'], doc['channel'], doc['text'])
-                                             for doc in res])
-                return [outdict]
+                return log_search(args[0], args[1])
+        elif text.split()[0] == "!logmore":
+            args = text.split()
+            if len(args) > 1:
+                return log_more(int(args[1]))
             else:
-                return [{'text': "검색 결과가 없습니다."}]
+                return log_more()
         elif text.split()[0] == "!loghelp":
-            return [{'text': "Usage:\n!search <key> <value> [<size>]\nkey: channel, user, text, time"}]
+            return log_help()
     return []
 
 
