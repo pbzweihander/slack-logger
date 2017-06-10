@@ -58,17 +58,17 @@ def handle_message(d: dict):
     return ""
 
 
-def log_search(key: str, value: str, size=10, fr=None) -> list:
+def log_search(filters: dict, size=10, fr=None) -> list:
     global last_search
-    res = es_search(settings.ES_INDEX, settings.ES_TYPE, {key: value}, size, fr)
+    res = es_search(settings.ES_INDEX, settings.ES_TYPE, filters, size, fr)
     if res:
         outdict = dict()
         outdict['pretext'] = "%s개가 검색됨" % len(res)
-        outdict['title'] = "%s: %s" % (key, value)
+        outdict['title'] = ', '.join(["%s: %s" % (k, v) for k, v in filters.items()])
         outdict['text'] = '\n'.join(["%s %s@%s: %s" %
                                      (doc[1]['time'], doc[1]['user'], doc[1]['channel'], doc[1]['text'])
                                      for doc in res])
-        last_search = (key, value, res[-1][0])
+        last_search = (filters, res[-1][0])
         return [outdict]
     else:
         return [{'text': "검색 결과가 없습니다."}]
@@ -77,12 +77,12 @@ def log_search(key: str, value: str, size=10, fr=None) -> list:
 def log_more(size=10) -> list:
     if not last_search:
         return [{'text': "마지막 검색 결과가 없습니다."}]
-    return log_search(last_search[0], last_search[1], size, last_search[2])
+    return log_search(last_search[0], size, last_search[1])
 
 
 def log_help() -> list:
     return [{'text': "Usage:\n"
-                     "!logsearch <key> <value> [<size>]\n"
+                     "!logsearch <key1>:<value1> [<key2>:<value2>] ...\n"
                      "!logmore [<size>]\n"
                      "!loghelp\n"
                      "(key: channel, user, text, time)"}]
@@ -91,13 +91,11 @@ def log_help() -> list:
 def handle_command(text: str) -> list:
     if text.startswith("!"):
         if text.split()[0] == "!logsearch":
-            args = text.split()[1:]
-            if len(args) < 2 or len(args) > 3:
+            args = text.split()
+            if len(args) < 2:
                 return log_help()
-            if len(args) == 3:
-                return log_search(args[0], args[1], int(args[2]))
-            else:
-                return log_search(args[0], args[1])
+            filters = dict([(f.split(':')[0], f.split(':')[1]) for f in args if ':' in f])
+            return log_search(filters, int(args[2]))
         elif text.split()[0] == "!logmore":
             args = text.split()
             if len(args) > 1:
