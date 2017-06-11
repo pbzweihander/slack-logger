@@ -26,19 +26,34 @@ def es_create(index: str, doc_type: str, body: dict) -> bool:
     return json.loads(res.text).get('created') or False
 
 
-def es_search(index: str, doc_type: str, body: dict, size=10, fr=None) -> list:
+def es_query_search(index: str, doc_type: str, query: dict) -> list:
+    s_query = json.dumps(query)
+    res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=s_query)
+    jsoned = json.loads(res.text)
+    if jsoned.get('hits') and jsoned['hits'].get('hits'):
+        return [(float(doc['sort'][0]), doc['_source']) for doc in jsoned['hits']['hits']]
+    return []
+
+
+def es_single_search(index: str, doc_type: str, body: dict, size=10, fr=None) -> list:
     query = {
         'size': size,
         'sort': [{'time': {'order': 'desc'}}],
         'query': {'term': body}}
     if fr:
         query['search_after'] = [fr]
-    query = json.dumps(query)
-    res = requests.post('http://localhost:9200/%s/%s/_search' % (index, doc_type), data=query)
-    jsoned = json.loads(res.text)
-    if jsoned.get('hits') and jsoned['hits'].get('hits'):
-        return [(float(doc['sort'][0]), doc['_source']) for doc in jsoned['hits']['hits']]
-    return []
+    return es_query_search(index, doc_type, query)
+
+
+def es_filter_search(index: str, doc_type: str, filters: list, size=10, fr=None) -> list:
+    query = {
+        'size': size,
+        'sort': [{'time': {'order': 'desc'}}],
+        'query': {'bool': {'filter': []}}}
+    query['query']['bool']['filter'] = [{'term': {f[0]: f[1]}} for f in filters]
+    if fr:
+        query['search_after'] = [fr]
+    return es_query_search(index, doc_type, query)
 
 
 def handle_message(d: dict):
@@ -58,20 +73,23 @@ def handle_message(d: dict):
     return ""
 
 
-def log_search(filters: dict, size=10, fr=None) -> list:
+def log_search(filters: list, size=10, fr=None) -> list:
     global last_search
-    res = es_search(settings.ES_INDEX, settings.ES_TYPE, filters, size, fr)
+    if len(filters) > 1:
+        res = es_filter_search(settings.ES_INDEX, settings.ES_TYPE, filters, size, fr)
+    else:
+        res = es_single_search(settings.ES_INDEX, settings.ES_TYPE, {filters[0][0]: filters[0][1]}, size, fr)
+    outdict = dict()
+    outdict['pretext'] = "%s개가 검색됨" % len(res)
+    outdict['title'] = ', '.join(["%s: %s" % (f[0], f[1]) for f in filters])
     if res:
-        outdict = dict()
-        outdict['pretext'] = "%s개가 검색됨" % len(res)
-        outdict['title'] = ', '.join(["%s: %s" % (k, v) for k, v in filters.items()])
         outdict['text'] = '\n'.join(["%s %s@%s: %s" %
                                      (doc[1]['time'], doc[1]['user'], doc[1]['channel'], doc[1]['text'])
-                                     for doc in res])
+                                     for doc in res][::-1])
         last_search = (filters, res[-1][0])
-        return [outdict]
     else:
-        return [{'text': "검색 결과가 없습니다."}]
+        outdict['text'] = "검색 결과가 없습니다."
+    return [outdict]
 
 
 def log_more(size=10) -> list:
@@ -82,7 +100,7 @@ def log_more(size=10) -> list:
 
 def log_help() -> list:
     return [{'text': "Usage:\n"
-                     "!logsearch <key1>:<value1> [<key2>:<value2>] ...\n"
+                     "!logsearch <key1>:<value1> [<key2>:<value2> ...]\n"
                      "!logmore [<size>]\n"
                      "!loghelp\n"
                      "(key: channel, user, text, time)"}]
@@ -91,11 +109,11 @@ def log_help() -> list:
 def handle_command(text: str) -> list:
     if text.startswith("!"):
         if text.split()[0] == "!logsearch":
-            args = text.split()
-            if len(args) < 2:
+            filters = [tuple(map(str.strip, f.split(':')))
+                       for f in text.split() if ':' in f]
+            if not filters:
                 return log_help()
-            filters = dict([(f.split(':')[0], f.split(':')[1]) for f in args if ':' in f])
-            return log_search(filters, int(args[2]))
+            return log_search(filters)
         elif text.split()[0] == "!logmore":
             args = text.split()
             if len(args) > 1:
