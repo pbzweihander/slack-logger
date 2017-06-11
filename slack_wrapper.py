@@ -1,4 +1,4 @@
-# Name: slack.py
+# Name: slack_wrapper.py
 # Author: pbzweihander
 # Email: sd852456@naver.com
 #
