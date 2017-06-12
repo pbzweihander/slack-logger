@@ -42,9 +42,11 @@ class SlackLogger:
     def parse_search_filter(ts: list, key: str) -> list:
         if not ts:
             return []
-        if ':' in ts[0]:
-            key = ts[0].split(':')[0]
-        return [(key, ts[0].split(':')[1])] + SlackLogger.parse_search_filter(ts[1:], key)
+        t = ts.pop(0)
+        if ':' in t:
+            return [tuple(map(str.strip, t.split(':')))] + SlackLogger.parse_search_filter(ts, t.split(':')[0].strip())
+        else:
+            return [(key, t)] + SlackLogger.parse_search_filter(ts, key)
 
     @staticmethod
     def log_help() -> list:
