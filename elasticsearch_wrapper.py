@@ -33,7 +33,6 @@ def es_query_search(index: str, doc_type: str, query: dict) -> list:
     return []
 
 
-#  'sort': [{'time': {'order': 'desc'}}],
 def es_single_search(index: str, doc_type: str, body: dict, size=10, fr=None, sort=None) -> list:
     query = {
         'size': size,

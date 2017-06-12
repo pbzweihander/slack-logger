@@ -64,9 +64,12 @@ class SlackLogger:
 
     def log_search(self, filters: list, size=10, fr=None) -> list:
         if len(filters) > 1:
-            res = elasticsearch_wrapper.es_filter_search(settings.ES_INDEX, settings.ES_TYPE, filters, size, fr)
+            res = elasticsearch_wrapper.es_filter_search(
+                settings.ES_INDEX, settings.ES_TYPE, filters, size, fr, [{'time': {'order': 'desc'}}])
         else:
-            res = elasticsearch_wrapper.es_single_search(settings.ES_INDEX, settings.ES_TYPE, {filters[0][0]: filters[0][1]}, size, fr)
+            res = elasticsearch_wrapper.es_single_search(
+                settings.ES_INDEX, settings.ES_TYPE,{filters[0][0]: filters[0][1]},
+                size, fr, [{'time': {'order': 'desc'}}])
         outdict = dict()
         outdict['pretext'] = "%s개가 검색됨" % len(res)
         outdict['title'] = ', '.join(["%s: %s" % (f[0], f[1]) for f in filters])
