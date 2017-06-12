@@ -39,6 +39,17 @@ class SlackLogger:
         self.logger.addHandler(self.stream_handler)
 
     @staticmethod
+    def parse_search_filter(ts: list) -> list:
+        if len(ts) == 1:
+            return ts
+        t = ts.pop()
+        if ':' in t:
+            return SlackLogger.parse_search_filter(ts) + t
+        else:
+            ts[-1] += ' ' + t
+            return SlackLogger.parse_search_filter(ts)
+
+    @staticmethod
     def log_help() -> list:
         return [{'text': "Usage:\n"
                          "!logsearch <key1>:<value1> [<key2>:<value2> ...]\n"
@@ -71,8 +82,10 @@ class SlackLogger:
     def handle_command(self, text: str) -> list:
         if text.startswith("!"):
             if text.split()[0] == "!logsearch":
+                if len(text.split()) == 1:
+                    return self.log_help()
                 filters = [tuple(map(str.strip, f.split(':')))
-                           for f in text.split() if ':' in f]
+                           for f in self.parse_search_filter(text.split()[1:])]
                 if not filters:
                     return self.log_help()
                 return self.log_search(filters)
@@ -102,7 +115,7 @@ class SlackLogger:
             self.slack.post_formatted_message(d['channel'], res)
         return ""
 
-    def log_to_json(self, channel: str, user: str, text: str, date_ts: datetime):
+    def log_to_json(self, channel: str, user: str, text: str, date_ts: datetime.datetime):
         outdict = dict()
         outdict['channel'] = channel
         outdict['user'] = user
