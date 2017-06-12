@@ -44,7 +44,7 @@ class SlackLogger:
             return ts
         t = ts.pop()
         if ':' in t:
-            return SlackLogger.parse_search_filter(ts) + t
+            return SlackLogger.parse_search_filter(ts) + [t]
         else:
             ts[-1] += ' ' + t
             return SlackLogger.parse_search_filter(ts)

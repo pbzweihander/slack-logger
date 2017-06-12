@@ -63,7 +63,8 @@ class Slack:
         try:
             text = self.socket.recv()
         except websocket.WebSocketConnectionClosedException:
+            print('connection error, reconnecting...')
             time.sleep(1)
             self.connect_socket()
             return self.read()
-        return self.socket.recv()
+        return text
