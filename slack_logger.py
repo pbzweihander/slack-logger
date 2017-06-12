@@ -39,20 +39,17 @@ class SlackLogger:
         self.logger.addHandler(self.stream_handler)
 
     @staticmethod
-    def parse_search_filter(ts: list) -> list:
-        if len(ts) == 1:
-            return ts
-        t = ts.pop()
-        if ':' in t:
-            return SlackLogger.parse_search_filter(ts) + [t]
-        else:
-            ts[-1] += ' ' + t
-            return SlackLogger.parse_search_filter(ts)
+    def parse_search_filter(ts: list, key: str) -> list:
+        if not ts:
+            return []
+        if ':' in ts[0]:
+            key = ts[0].split(':')[0]
+        return [(key, ts[0].split(':')[1])] + SlackLogger.parse_search_filter(ts[1:], key)
 
     @staticmethod
     def log_help() -> list:
         return [{'text': "Usage:\n"
-                         "!logsearch <key1>:<value1> [<key2>:<value2> ...]\n"
+                         "!logsearch <key1>:<value1> [<key2>:<value2> [...]]\n"
                          "!logmore [<size>]\n"
                          "!loghelp\n"
                          "(key: channel, user, text, time)"}]
@@ -87,8 +84,7 @@ class SlackLogger:
             if text.split()[0] == "!logsearch":
                 if len(text.split()) == 1:
                     return self.log_help()
-                filters = [tuple(map(str.strip, f.split(':')))
-                           for f in self.parse_search_filter(text.split()[1:])]
+                filters = self.parse_search_filter(text.split()[1:], 'text')
                 if not filters:
                     return self.log_help()
                 return self.log_search(filters)
