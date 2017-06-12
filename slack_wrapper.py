@@ -14,23 +14,25 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-from slacker import Slacker
+import slacker
 import websocket
+import time
 
 
 class Slack:
     client = None
     socket = None
+    rtm_endpoint = ""
     name = ""
     id = ""
     users = dict()
     channels = dict()
 
     def __init__(self, token: str, name: str):
-        self.client = Slacker(token)
+        self.client = slacker.Slacker(token)
         res = self.client.rtm.start()
-        endpoint = res.body['url']
-        self.socket = websocket.create_connection(endpoint)
+        self.rtm_endpoint = res.body['url']
+        self.connect_socket()
         self.name = name
 
         self.refresh_users()
@@ -39,6 +41,9 @@ class Slack:
                 self.id = user
                 break
         self.refresh_channels()
+
+    def connect_socket(self):
+        self.socket = websocket.create_connection(self.rtm_endpoint)
 
     def refresh_users(self):
         for u in self.client.users.list().body['members']:
@@ -55,4 +60,10 @@ class Slack:
         self.client.chat.post_message(channel=chan, text=None, attachments=body, as_user=as_user, username=name)
 
     def read(self) -> list:
+        try:
+            text = self.socket.recv()
+        except websocket.WebSocketConnectionClosedException:
+            time.sleep(1)
+            self.connect_socket()
+            return self.read()
         return self.socket.recv()
