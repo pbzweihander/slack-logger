@@ -38,21 +38,18 @@ class SlackLogger:
         self.logger.addHandler(self.file_handler)
         self.logger.addHandler(self.stream_handler)
 
-    def handle_message(self, d: dict):
-        channame = self.slack.channels.get(d['channel'])
-        if not channame:
-            self.slack.refresh_channels()
-            channame = self.slack.channels.get(d['channel']) or "?"
-        username = self.slack.users.get(d['user'])
-        if not username:
-            self.slack.refresh_users()
-            username = self.slack.users.get(d['user']) or "?"
-        date_ts = datetime.datetime.fromtimestamp(float(d['ts']))
-        self.log_to_json(channame, username, d['text'], date_ts)
-        res = self.handle_command(d['text'])
-        if res:
-            self.slack.post_formatted_message(d['channel'], res)
-        return ""
+    @staticmethod
+    def log_help() -> list:
+        return [{'text': "Usage:\n"
+                         "!logsearch <key1>:<value1> [<key2>:<value2> ...]\n"
+                         "!logmore [<size>]\n"
+                         "!loghelp\n"
+                         "(key: channel, user, text, time)"}]
+
+    def log_more(self, size=10) -> list:
+        if not self.last_search:
+            return [{'text': "마지막 검색 결과가 없습니다."}]
+        return self.log_search(self.last_search[0], size, self.last_search[1])
 
     def log_search(self, filters: list, size=10, fr=None) -> list:
         if len(filters) > 1:
@@ -71,19 +68,6 @@ class SlackLogger:
             outdict['text'] = "검색 결과가 없습니다."
         return [outdict]
 
-    def log_more(self, size=10) -> list:
-        if not self.last_search:
-            return [{'text': "마지막 검색 결과가 없습니다."}]
-        return self.log_search(self.last_search[0], size, self.last_search[1])
-
-    @staticmethod
-    def log_help() -> list:
-        return [{'text': "Usage:\n"
-                         "!logsearch <key1>:<value1> [<key2>:<value2> ...]\n"
-                         "!logmore [<size>]\n"
-                         "!loghelp\n"
-                         "(key: channel, user, text, time)"}]
-
     def handle_command(self, text: str) -> list:
         if text.startswith("!"):
             if text.split()[0] == "!logsearch":
@@ -101,6 +85,22 @@ class SlackLogger:
             elif text.split()[0] == "!loghelp":
                 return self.log_help()
         return []
+
+    def handle_message(self, d: dict):
+        channame = self.slack.channels.get(d['channel'])
+        if not channame:
+            self.slack.refresh_channels()
+            channame = self.slack.channels.get(d['channel']) or "?"
+        username = self.slack.users.get(d['user'])
+        if not username:
+            self.slack.refresh_users()
+            username = self.slack.users.get(d['user']) or "?"
+        date_ts = datetime.datetime.fromtimestamp(float(d['ts']))
+        self.log_to_json(channame, username, d['text'], date_ts)
+        res = self.handle_command(d['text'])
+        if res:
+            self.slack.post_formatted_message(d['channel'], res)
+        return ""
 
     def log_to_json(self, channel: str, user: str, text: str, date_ts: datetime):
         outdict = dict()
