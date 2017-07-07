@@ -22,7 +22,6 @@ import time
 class Slack:
     client = None
     socket = None
-    rtm_endpoint = ""
     name = ""
     id = ""
     users = dict()
@@ -30,8 +29,6 @@ class Slack:
 
     def __init__(self, token: str, name: str):
         self.client = slacker.Slacker(token)
-        res = self.client.rtm.start()
-        self.rtm_endpoint = res.body['url']
         self.connect_socket()
         self.name = name
 
@@ -43,7 +40,13 @@ class Slack:
         self.refresh_channels()
 
     def connect_socket(self):
-        self.socket = websocket.create_connection(self.rtm_endpoint)
+        try:
+            res = self.client.rtm.start()
+            rtm_endpoint = res.body['url']
+            self.socket = websocket.create_connection(rtm_endpoint)
+        except:
+            time.sleep(1)
+            self.connect_socket()
 
     def refresh_users(self):
         for u in self.client.users.list().body['members']:
@@ -59,7 +62,7 @@ class Slack:
     def post_formatted_message(self, chan: str, body: list, as_user=True, name=""):
         self.client.chat.post_message(channel=chan, text=None, attachments=body, as_user=as_user, username=name)
 
-    def read(self) -> list:
+    def read(self) -> str:
         try:
             text = self.socket.recv()
         except websocket.WebSocketConnectionClosedException:
